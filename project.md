@@ -1,4 +1,5 @@
 # ESP32 Edge
+the github repository is github.com/elecdevelop/esp32_edge
 
 The goal is to have a standalone edge-AI device based on ESP32-S3
 
