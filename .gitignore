@@ -1,0 +1,7 @@
+build/
+managed_components/
+output.wav
+wave_samples/
+*.wav
+sdkconfig.old
+.DS_Store
