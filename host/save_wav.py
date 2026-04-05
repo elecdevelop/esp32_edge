@@ -23,11 +23,11 @@ print(f"Port   : {PORT}")
 print(f"Output : {OUTPUT}")
 print(f"Expect : {TOTAL_BYTES} bytes  ({TOTAL_SAMPLES / SAMPLE_RATE:.1f} s @ {SAMPLE_RATE} Hz)")
 
-# Opening the port asserts DTR, which wakes the ESP32 and starts the stream.
+# Send a start byte to trigger the ESP32, then read the stream.
 # timeout=10 gives plenty of margin over the 5 s real-time stream.
 with serial.Serial(PORT, baudrate=115200, timeout=10) as ser:
-    ser.dtr = True          # explicit DTR assert (triggers ESP32)
     ser.reset_input_buffer()
+    ser.write(b'\x01')      # start signal — wakes ESP32 from wait_for_host()
 
     print("Receiving PCM data:")
     buf = bytearray()
