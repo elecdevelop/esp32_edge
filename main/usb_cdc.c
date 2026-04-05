@@ -3,22 +3,21 @@
 #include "freertos/task.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_log.h"
-#include "esp_check.h"
 
 static const char *TAG = "usb_cdc";
-
-#define TX_BUF_SIZE  4096
-#define RX_BUF_SIZE  256
 
 esp_err_t usb_cdc_init(void)
 {
     usb_serial_jtag_driver_config_t cfg = {
-        .rx_buffer_size = RX_BUF_SIZE,
-        .tx_buffer_size = TX_BUF_SIZE,
+        .rx_buffer_size = 1024,
+        .tx_buffer_size = 4096,
     };
-    ESP_RETURN_ON_ERROR(usb_serial_jtag_driver_install(&cfg),
-                        TAG, "usb_serial_jtag_driver_install failed");
-    ESP_LOGI(TAG, "USB Serial/JTAG ready");
+    esp_err_t err = usb_serial_jtag_driver_install(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "usb_serial_jtag_driver_install failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    ESP_LOGI(TAG, "USB Serial/JTAG driver installed");
     return ESP_OK;
 }
 

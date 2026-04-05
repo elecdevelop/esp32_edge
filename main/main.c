@@ -10,7 +10,7 @@
 static const char *TAG = "main";
 
 #define SAMPLE_RATE    16000
-#define RECORD_SECONDS 5
+#define RECORD_SECONDS 7
 #define TOTAL_SAMPLES  (SAMPLE_RATE * RECORD_SECONDS)
 #define TOTAL_HOPS     (TOTAL_SAMPLES / HOP_SIZE)
 
@@ -19,15 +19,28 @@ static const char *TAG = "main";
 
 void app_main(void)
 {
-    ESP_ERROR_CHECK(dsp_pipeline_init());
-    ESP_ERROR_CHECK(usb_cdc_init());
+    /* ---- DIAGNOSTIC MODE: confirm USB console works before full init ---- */
+    ESP_LOGI(TAG, "app_main() started — USB console alive");
+    for (int i = 0; i < 5; i++) {
+        ESP_LOGI(TAG, "heartbeat %d", i);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    ESP_LOGI(TAG, "Calling dsp_pipeline_init()...");
+    esp_err_t err = dsp_pipeline_init();
+    ESP_LOGI(TAG, "dsp_pipeline_init() returned %s", esp_err_to_name(err));
+    if (err != ESP_OK) { return; }
+
+    ESP_LOGI(TAG, "Calling usb_cdc_init()...");
+    err = usb_cdc_init();
+    ESP_LOGI(TAG, "usb_cdc_init() returned %s", esp_err_to_name(err));
+    if (err != ESP_OK) { return; }
 
     static int16_t noise_hop[HOP_SIZE];
     static int16_t voice_hop[HOP_SIZE];
     static int16_t out_hop[HOP_SIZE];
 
     while (true) {
-        /* Wait for host to open the serial port (DTR high) */
         ESP_LOGI(TAG, "Waiting for host...");
         usb_cdc_wait_for_host();
 

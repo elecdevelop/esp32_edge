@@ -5,9 +5,11 @@ CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
 
-CONFIG_TINYUSB_CDC_ENABLED=y
+# USB Serial/JTAG peripheral for data transfer (GPIO 19/20).
+# esptool auto-reset works natively with USJ — no button needed.
+CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=y
 
-# Disable USB-Serial-JTAG so TinyUSB (USB OTG) can own GPIO 19/20
-CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=n
-
+# Log output goes to UART0 (GPIO1/3) so the USB CDC stream carries
+# only binary audio data, not interleaved ASCII log lines.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y

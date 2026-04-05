@@ -16,7 +16,7 @@ os.makedirs(OUTDIR, exist_ok=True)
 timestamp    = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUTPUT       = os.path.join(OUTDIR, f"output_{timestamp}.wav")
 SAMPLE_RATE   = 16000
-TOTAL_SAMPLES = 80_000
+TOTAL_SAMPLES = 112_000
 TOTAL_BYTES   = TOTAL_SAMPLES * 2
 
 print(f"Port   : {PORT}")
