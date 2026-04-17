@@ -53,6 +53,46 @@ def spectral_subtract_simple(voice_data, noise_data):
     clean = np.clip(voice_data - ALPHA * noise_data, -32767, 32767)
     return clean
 
+def write_wav_simple(data, filepath, sample_rate=16000):
+    """Write mono 16-bit WAV manually"""
+    out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
+    
+    with open(filepath, "wb") as f:
+        f.write(b"RIFF")
+        length = 36 + len(out) * 2
+        f.write(length.to_bytes(4, byteorder='little'))
+        f.write(b"WAVEfmt ")
+        f.write(b"\x10\x00\x00\x00")  # Subchunk size
+        f.write(b"\x01\x00")  # PCM format
+        f.write(b"\x10\x00")  # 16-bit
+        f.write(b"\x10\x00")  # Sample rate
+        f.write(b"\x00\x00")  # Byte rate
+        f.write(b"\x01\x00")  # Channels
+        f.write(b"WAVE")
+        f.write(b"data")
+        f.write(len(out).to_bytes(4, byteorder='little'))
+        f.write(out.tobytes())
+
+def write_wav_original(voice_data, noise_data, clean, filepath, sample_rate=16000):
+    """Write mono 16-bit WAV manually"""
+    out = np.clip(clean.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
+    
+    with open(filepath, "wb") as f:
+        f.write(b"RIFF")
+        length = 36 + len(out) * 2
+        f.write(length.to_bytes(4, byteorder='little'))
+        f.write(b"WAVEfmt ")
+        f.write(b"\x10\x00\x00\x00")  # Subchunk size
+        f.write(b"\x01\x00")  # PCM format
+        f.write(b"\x10\x00")  # 16-bit
+        f.write(b"\x10\x00")  # Sample rate
+        f.write(b"\x00\x00")  # Byte rate
+        f.write(b"\x01\x00")  # Channels
+        f.write(b"WAVE")
+        f.write(b"data")
+        f.write(len(out).to_bytes(4, byteorder='little'))
+        f.write(out.tobytes())
+
 if __name__ == "__main__":
     noise_data, voice_data = generate_signals(duration=5)
     print(f"Generated {len(voice_data)} samples ({len(voice_data)/SAMPLE_RATE:.1f}s)")
@@ -88,25 +128,6 @@ if __name__ == "__main__":
             db = 20 * np.log10(np.abs(clean_fft[idx]) + 1e-10)
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
-    # Save as WAV
-    out_typed = clean_simple.astype(np.float32)
-    out_simple = out_typed.astype(np.int16)
-    with open("clean_simple.wav", "wb") as f:
-        f.write(b"RIFF")
-        length_bytes = (36 + len(out_simple) * 2).to_bytes(4, byteorder='little')
-        f.write(length_bytes)
-        f.write(b"WAVE")
-        f.write(b"fmt ")
-        f.write(b"\x10\x00")
-        f.write(b"\x00\x00")
-        f.write(b"\x01\x00")  # PCM
-        f.write(b"\x10\x00")  # 16-bit
-        f.write(b"\x10\x00")  # 16000 Hz
-        f.write(b"\x01\x00")  # 1 channel
-        f.write(b"WAVE")
-        f.write(b"data")
-        f.write(len(out_simple).to_bytes(4, byteorder='little'))
-        for v in out_typed:
-            f.write(np.clip((v * 32767).astype(np.int16).tobytes(), -32767, 32767))
-    
-    print("Clean output saved as clean_simple.wav")
+    print("\nSaving clean outputs as WAV...")
+    write_wav_simple(clean_simple, f"clean_simple.wav")
+    print("Saved clean_simple.wav")
