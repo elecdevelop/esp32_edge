@@ -52,13 +52,11 @@ import wave
 import time
 
 def write_wav_simple(data, filepath, sample_rate=16000):
-    """Write mono 16-bit WAV manually"""
-    # Normalize to use full 16-bit range for audio quality
-    max_val = np.max(np.abs(data))
-    if max_val > 1e-10:
-        data = data / max_val * 18000  # 18000 gives good headroom (~-11dB)
-    
-    out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
+    """Write mono 16-bit WAV with safe amplitude"""
+    # Clamp to safe 16-bit range
+    max_val = 12000
+    out = np.clip(data.astype(np.float32), -max_val, max_val)
+    out = (out / max_val * 32767).astype(np.int16)
     
     with wave.open(filepath, "wb") as wav_file:
         wav_file.setnchannels(1)
@@ -125,5 +123,5 @@ if __name__ == "__main__":
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
     print("\nSaving clean outputs as WAV...")
-    write_wav_simple(clean_simple, output_file)
+    write_wav_simple(clean_simple, output_file, sample_rate=SAMPLE_RATE)
     print(f"Saved {output_file}")
