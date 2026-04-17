@@ -53,25 +53,17 @@ def spectral_subtract_simple(voice_data, noise_data):
     clean = np.clip(voice_data - ALPHA * noise_data, -32767, 32767)
     return clean
 
+import wave
+import time
+
 def write_wav_simple(data, filepath, sample_rate=16000):
     """Write mono 16-bit WAV manually"""
-    out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
-    
-    with open(filepath, "wb") as f:
-        f.write(b"RIFF")
-        length = 36 + len(out) * 2
-        f.write(length.to_bytes(4, byteorder='little'))
-        f.write(b"WAVEfmt ")
-        f.write(b"\x10\x00\x00\x00")  # Subchunk size
-        f.write(b"\x01\x00")  # PCM format
-        f.write(b"\x10\x00")  # 16-bit
-        f.write(b"\x10\x00")  # Sample rate
-        f.write(b"\x00\x00")  # Byte rate
-        f.write(b"\x01\x00")  # Channels
-        f.write(b"WAVE")
-        f.write(b"data")
-        f.write(len(out).to_bytes(4, byteorder='little'))
-        f.write(out.tobytes())
+    with wave.open(filepath, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
+        wav_file.writeframes(out.tobytes())
 
 def write_wav_original(voice_data, noise_data, clean, filepath, sample_rate=16000):
     """Write mono 16-bit WAV manually"""
@@ -96,6 +88,9 @@ def write_wav_original(voice_data, noise_data, clean, filepath, sample_rate=1600
 if __name__ == "__main__":
     noise_data, voice_data = generate_signals(duration=5)
     print(f"Generated {len(voice_data)} samples ({len(voice_data)/SAMPLE_RATE:.1f}s)")
+    
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    output_file = f"clean_simple_{timestamp}.wav"
     
     # Test simple method
     print("\n" + "="*60)
@@ -129,5 +124,5 @@ if __name__ == "__main__":
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
     print("\nSaving clean outputs as WAV...")
-    write_wav_simple(clean_simple, f"clean_simple.wav")
-    print("Saved clean_simple.wav")
+    write_wav_simple(clean_simple, output_file)
+    print(f"Saved {output_file}")
