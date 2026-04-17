@@ -47,5 +47,25 @@ To perform a realtime assess/tweak on the de-noising algorithm output, an AI mod
 
 For this first step, there is no AI model involved. also, the digital PDM mics are not connected to the ESP32-S3 supermini board. Hence, I would like the firmware to perform on some test data; on the noise profile mic, we have a 1.7KHz square signal, while on the voice mic we are supposed have a mix of a 1Khz sine wave and the already mentioned 1.7KHz square signal. The sound sampling would be 16-bit and 16ks/s .
 
-A five second long sample of the output will be sent to the computer via USB storage protocol, to be saved as a wave file. 
+A five second long sample of the output will be sent to the computer via USB storage protocol, to be saved as a wave file.
+
+### Step 1 Experiments
+
+#### experiment/simple_sine_noise
+Branch: `experiment/simple_sine_noise`
+
+This experiment validates the signal generation and DSP pipeline using two pure sine waves instead of square waves, with the noise reference kept clean (no voice content).
+
+**Signal configuration:**
+- Noise mic: 1.7 kHz sine, amplitude ±5000
+- Voice mic: 1 kHz sine (±10000) + 1.7 kHz sine (±5000) mixed together
+- Sample rate: 16 kHz, 16-bit PCM
+
+The key difference from the original Step 1 spec (which used a square wave for noise) is that both channels use sine waves. This makes the spectral content simpler and more predictable, giving a cleaner baseline to verify the de-noising algorithm before introducing real mic signals.
+
+**Files:**
+- `main/signal_gen.c` — updated signal generator (sine-only, separate voice/noise amplitudes)
+- `test_signal_verify.c` — host-side C program to print and analyze the first 128 samples of each channel, confirming the generator produces the expected amplitudes and waveforms
+- `main/test_basic.c` — early on-device test stub for hop timing and USB output (not wired into the main build)
+- `bootloader/bootloader.bin`, `partition/partition_table.bin` — pre-built binaries for standalone flashing without a full build environment
 
