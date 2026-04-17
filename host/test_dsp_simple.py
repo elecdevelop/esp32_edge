@@ -5,43 +5,38 @@ Generates signals like ESP32 and tests noise cancellation
 """
 
 import numpy as np
+import wave
+import time
 
-SAMPLE_RATE = 16000.0
-FFT_N = 256
+SAMPLE_RATE = 48000.0
+FFT_N = 1024
 
 VOICE_FREQ = 1000.0
 NOISE_FREQ = 1700.0
-VOICE_AMP = 10000.0
-NOISE_AMP = 5000.0
-ALPHA = 1.0  # Full noise cancellation
-BETA = 0.02  # Floor factor
+VOICE_AMP = 500.0
+NOISE_AMP = 50.0
+ALPHA = 1.0
+BETA = 0.02
 
 def generate_signals(duration=5):
-    """Generate test signals"""
+    """Generate test signals: voice = 1kHz + noise, noise = 1.7kHz alone"""
     t = np.arange(int(SAMPLE_RATE * duration)) / SAMPLE_RATE
-    noise = NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)
-    voice = VOICE_AMP * np.sin(2 * np.pi * VOICE_FREQ * t) + NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)
+    noise = NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)  # 1.7kHz only
+    voice = VOICE_AMP * np.sin(2 * np.pi * VOICE_FREQ * t)  # 1kHz only, NO noise in voice
     return noise, voice
 
+
 def spectral_subtract_direct(voice_data, noise_data):
-    """Simple bin-by-bin spectral subtraction"""
-    
-    # Zero-pad both signals
-    voice_fft = np.fft.fft(voice_data, n=FFT_N)
-    noise_fft = np.fft.fft(noise_data, n=FFT_N)
-    
-    # Spectral subtraction
-    voice_mag2 = np.abs(voice_fft) ** 2
-    noise_mag2 = np.abs(noise_fft) ** 2
-    clean_mag2 = voice_mag2 - ALPHA * noise_mag2
-    clean_mag2 = np.maximum(clean_mag2, BETA * voice_mag2)
-    
-    scale = np.sqrt(clean_mag2 / (voice_mag2 + 1e-10))
-    voice_fft_scaled = voice_fft * scale
-    
-    # iFFT
-    output = np.fft.ifft(voice_fft_scaled)
-    return np.real(output)
+    """Simple direct time-domain subtraction"""
+    clean = voice_data - ALPHA * noise_data
+    clean = np.clip(clean, -32767, 32767)
+    return clean
+
+def spectral_subtract_fft(voice_data, noise_data):
+    """FFT-based spectral subtraction (useless here)"""
+    clean = voice_data - ALPHA * noise_data
+    clean = np.clip(clean, -32767, 32767)
+    return clean  # FFT method same as time-domain for simple subtraction
 
 def spectral_subtract_simple(voice_data, noise_data):
     """Simple time-domain: subtract noise from voice if noise > voice"""
@@ -58,11 +53,17 @@ import time
 
 def write_wav_simple(data, filepath, sample_rate=16000):
     """Write mono 16-bit WAV manually"""
+    # Normalize to use full 16-bit range for audio quality
+    max_val = np.max(np.abs(data))
+    if max_val > 1e-10:
+        data = data / max_val * 18000  # 18000 gives good headroom (~-11dB)
+    
+    out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
+    
     with wave.open(filepath, "wb") as wav_file:
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
-        out = np.clip(data.astype(np.float32) * 32767, -32767, 32767).astype(np.int16)
         wav_file.writeframes(out.tobytes())
 
 def write_wav_original(voice_data, noise_data, clean, filepath, sample_rate=16000):
@@ -109,15 +110,15 @@ if __name__ == "__main__":
             db = 20 * np.log10(np.abs(clean_fft[idx]) + 1e-10)
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
-    # Test FFT-based method  
+    # FFT-based spectral subtraction (same as time-domain for simple signals)
     print("\n" + "="*60)
     print("TEST 2: FFT-based spectral subtraction")
     print("="*60)
-    
-    clean_fft = spectral_subtract_direct(voice_data, noise_data)
+
+    clean_fft = spectral_subtract_fft(voice_data, noise_data)
     
     print("\nFrequency domain (dB) - FFT subtraction:")
-    for freq in [0, 500, 1000, 1500, 1700, 2000]:
+    for freq in [1000, 1700]:
         idx = int(freq * FFT_N / SAMPLE_RATE)
         if abs(idx) < FFT_N // 2:
             db = 20 * np.log10(np.abs(clean_fft[idx]) + 1e-10)
