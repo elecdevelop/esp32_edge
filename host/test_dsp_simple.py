@@ -13,16 +13,16 @@ FFT_N = 1024
 
 VOICE_FREQ = 1000.0
 NOISE_FREQ = 1700.0
-VOICE_AMP = 500.0
-NOISE_AMP = 50.0
+VOICE_AMP = 10000.0    # ±10,000 for 1kHz component
+NOISE_AMP = 5000.0     # ±5,000 for 1.7kHz noise
 ALPHA = 1.0
 BETA = 0.02
 
 def generate_signals(duration=5):
-    """Generate test signals: voice = 1kHz + noise, noise = 1.7kHz alone"""
+    """Generate test signals: voice = 1kHz + noise mixed, noise = 1.7kHz alone"""
     t = np.arange(int(SAMPLE_RATE * duration)) / SAMPLE_RATE
-    noise = NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)  # 1.7kHz only
-    voice = VOICE_AMP * np.sin(2 * np.pi * VOICE_FREQ * t)  # 1kHz only, NO noise in voice
+    noise = NOISE_AMP * np.sin(2 * np.pi * NOISE_FREQ * t)  # 1.7kHz only (reference mic)
+    voice = VOICE_AMP * np.sin(2 * np.pi * VOICE_FREQ * t) + noise  # 1kHz + 1.7kHz mixed (voice mic)
     return noise, voice
 
 
@@ -53,16 +53,14 @@ import time
 
 def write_wav_simple(data, filepath, sample_rate=16000):
     """Write mono 16-bit WAV with safe amplitude"""
-    # Clamp to safe 16-bit range
-    max_val = 12000
-    out = np.clip(data.astype(np.float32), -max_val, max_val)
-    out = (out / max_val * 32767).astype(np.int16)
+    # Convert to int16 range
+    data = np.clip(data.astype(np.float32), -32767, 32767).astype(np.int16)
     
     with wave.open(filepath, "wb") as wav_file:
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
-        wav_file.writeframes(out.tobytes())
+        wav_file.writeframes(data.tobytes())
 
 def write_wav_original(voice_data, noise_data, clean, filepath, sample_rate=16000):
     """Write mono 16-bit WAV manually"""
@@ -123,5 +121,11 @@ if __name__ == "__main__":
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
     print("\nSaving clean outputs as WAV...")
+    
+    # Save original voice signal for comparison (ground truth)
+    write_wav_simple(voice_data, output_file.replace(".wav", "_clean_voice.wav"), sample_rate=SAMPLE_RATE)
+    
+    # Save cleaned result after noise subtraction
     write_wav_simple(clean_simple, output_file, sample_rate=SAMPLE_RATE)
+    
     print(f"Saved {output_file}")
