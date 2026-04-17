@@ -88,4 +88,25 @@ if __name__ == "__main__":
             db = 20 * np.log10(np.abs(clean_fft[idx]) + 1e-10)
             print(f"  |{freq:4d}| Hz: {db:7.1f} dB")
     
-    print("\nClean output saved as clean_simple.npy")
+    # Save as WAV
+    out_typed = clean_simple.astype(np.float32)
+    out_simple = out_typed.astype(np.int16)
+    with open("clean_simple.wav", "wb") as f:
+        f.write(b"RIFF")
+        length_bytes = (36 + len(out_simple) * 2).to_bytes(4, byteorder='little')
+        f.write(length_bytes)
+        f.write(b"WAVE")
+        f.write(b"fmt ")
+        f.write(b"\x10\x00")
+        f.write(b"\x00\x00")
+        f.write(b"\x01\x00")  # PCM
+        f.write(b"\x10\x00")  # 16-bit
+        f.write(b"\x10\x00")  # 16000 Hz
+        f.write(b"\x01\x00")  # 1 channel
+        f.write(b"WAVE")
+        f.write(b"data")
+        f.write(len(out_simple).to_bytes(4, byteorder='little'))
+        for v in out_typed:
+            f.write(np.clip((v * 32767).astype(np.int16).tobytes(), -32767, 32767))
+    
+    print("Clean output saved as clean_simple.wav")
