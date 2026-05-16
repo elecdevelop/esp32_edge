@@ -7,6 +7,7 @@ Usage:  python3 save_wav.py [PORT] [OUTPUT]
 ESP32 sends: [ALL raw] [ALL denoised]
 2 seconds @ 16 kHz = 32 000 samples per channel = 64 KB each.
 Total: 128 KB.
+FFT_N=512, HOP_SIZE=256 for better frequency resolution.
 """
 import sys
 import wave
