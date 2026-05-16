@@ -16,6 +16,12 @@ static const float NOISE_INC = 2.0f * (float)M_PI * NOISE_FREQ / SAMPLE_RATE;
 /* Test 2: noise mic = 1.7 kHz sine ±5000, voice mic = 1 kHz sine ±10000.
  * The voice mic has NO noise component — noise reference is a separate tone.
  * Expected output: 1 kHz sine preserved, no 1.7 kHz in output. */
+void signal_gen_reset(void)
+{
+    s_voice_phase = 0.0f;
+    s_noise_phase = 0.0f;
+}
+
 void signal_gen_next_hop(int16_t *noise_buf, int16_t *voice_buf, int n_samples)
 {
     for (int i = 0; i < n_samples; i++) {

@@ -4,7 +4,7 @@
 
 set -e
 
-source ~/esp/esp-idf/export.sh 2>/dev/null
+source /home/meysam/.espressif/v6.0.1/esp-idf/export.sh 2>/dev/null
 
 PORT=${1:-/dev/ttyACM0}
 

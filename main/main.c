@@ -2,6 +2,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include <string.h>
 
 #include "signal_gen.h"
 #include "dsp_pipeline.h"
@@ -10,7 +11,7 @@
 static const char *TAG = "main";
 
 #define SAMPLE_RATE    16000
-#define RECORD_SECONDS 7
+#define RECORD_SECONDS 2
 #define TOTAL_SAMPLES  (SAMPLE_RATE * RECORD_SECONDS)
 #define TOTAL_HOPS     (TOTAL_SAMPLES / HOP_SIZE)
 
@@ -45,16 +46,27 @@ void app_main(void)
         usb_cdc_wait_for_host();
 
         dsp_pipeline_reset();
+        signal_gen_reset();
 
-        ESP_LOGI(TAG, "Streaming %d samples (%ds @ %dHz)...",
+        ESP_LOGI(TAG, "Capturing %d samples (%ds @ %dHz)...",
                  TOTAL_SAMPLES, RECORD_SECONDS, SAMPLE_RATE);
+
+        /* Buffer both raw and denoised, then transmit sequentially.
+         * 2 s × 16 kHz = 32 000 samples × 2 B = 64 KB per channel.
+         * 128 KB total fits comfortably in 512 KB SRAM. */
+        static int16_t raw_buf[TOTAL_SAMPLES];
+        static int16_t denoised_buf[TOTAL_SAMPLES];
 
         int64_t next_hop_time = esp_timer_get_time();
 
+        /* Phase 1: capture — run signal gen + DSP, store both channels */
         for (int hop = 0; hop < TOTAL_HOPS; hop++) {
+            int offset = hop * HOP_SIZE;
             signal_gen_next_hop(noise_hop, voice_hop, HOP_SIZE);
             dsp_process_hop(voice_hop, noise_hop, out_hop);
-            usb_cdc_write_samples(out_hop, HOP_SIZE);
+
+            memcpy(&raw_buf[offset], voice_hop, HOP_SIZE * sizeof(int16_t));
+            memcpy(&denoised_buf[offset], out_hop, HOP_SIZE * sizeof(int16_t));
 
             next_hop_time += HOP_PERIOD_US;
             int64_t slack_us = next_hop_time - esp_timer_get_time();
@@ -63,6 +75,20 @@ void app_main(void)
             }
         }
 
-        ESP_LOGI(TAG, "Stream complete — ready for next capture");
+        /* Phase 2: transmit raw samples */
+        ESP_LOGI(TAG, "Transmitting raw samples (%d bytes)...", TOTAL_SAMPLES * 2);
+        for (int hop = 0; hop < TOTAL_HOPS; hop++) {
+            int offset = hop * HOP_SIZE;
+            usb_cdc_write_samples(&raw_buf[offset], HOP_SIZE);
+        }
+
+        /* Phase 3: transmit denoised samples */
+        ESP_LOGI(TAG, "Transmitting denoised samples (%d bytes)...", TOTAL_SAMPLES * 2);
+        for (int hop = 0; hop < TOTAL_HOPS; hop++) {
+            int offset = hop * HOP_SIZE;
+            usb_cdc_write_samples(&denoised_buf[offset], HOP_SIZE);
+        }
+
+        ESP_LOGI(TAG, "Capture complete — ready for next round");
     }
 }
